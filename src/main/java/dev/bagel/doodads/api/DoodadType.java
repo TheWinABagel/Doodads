@@ -28,7 +28,7 @@ public final class DoodadType {
     }
 
     public void registerIcon(IconRegister iconRegister) {
-        iconRegister.registerIcon(iconLocation.toString());
+        this.icon = iconRegister.registerIcon(iconLocation.toString());
     }
 
     public void write(NBTTagCompound tag) {

@@ -6,9 +6,15 @@ import dev.bagel.doodads.api.DoodadType;
 import dev.bagel.doodads.api.DoodadsApi;
 import net.minecraft.src.*;
 
-public class DoodadInventory implements IInventory {
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.ToIntFunction;
+
+public class DoodadInventory implements IInventory, NbtSerializable<DoodadInventory> {
 
     private final int invSize;
+    private final Map<Integer, Tuple2<DoodadSlotRef, ItemStack>> itemMap;
     private final ItemStack[] items;
     private final EntityPlayer player;
 
@@ -16,6 +22,7 @@ public class DoodadInventory implements IInventory {
         this.invSize = invSize;
         this.items = new ItemStack[invSize];
         this.player = player;
+        this.itemMap = new HashMap<>(invSize);
     }
 
     protected DoodadInventory(int invSize, ItemStack[] items, EntityPlayer player) {
@@ -25,6 +32,7 @@ public class DoodadInventory implements IInventory {
             this.items[i] = items[i];
         }
         this.player = player;
+        this.itemMap = new HashMap<>(invSize);
     }
 
     @Override
@@ -100,7 +108,7 @@ public class DoodadInventory implements IInventory {
 
     @Override
     public boolean isItemValidForSlot(int i, ItemStack itemStack) {
-        return itemStack.getItem() instanceof Doodad;
+        return itemStack.getItem() instanceof Doodad doodad  && doodad.canUnequip(items[i], player, new DoodadSlotRef(i, TypeRegistry.INSTANCE.getLoadedTypes().get("ring")));
     }
 
     protected Doodad getDoodad(ItemStack stack) {
@@ -109,6 +117,45 @@ public class DoodadInventory implements IInventory {
         }
         return null;
     }
+
+    public void tickInventory() {
+        for (int i = 0; i < items.length; i++) {
+            ItemStack stack = items[i];
+            Doodad doodad = getDoodad(stack);
+            if (doodad != null) {
+                doodad.onTick(stack, player, new DoodadSlotRef(i, TypeRegistry.INSTANCE.getLoadedTypes().get("ring")));
+            }
+        }
+    }
+
+    @Override
+    public DoodadInventory loadFromNbt(NBTTagCompound tag) {
+
+        return null;
+    }
+
+    @Override
+    public NBTTagCompound saveToNbt(DoodadInventory serializable) {
+        NBTTagCompound tag = new NBTTagCompound();
+        tag.setByte("InvSize", (byte) invSize);
+        NBTTagList list = new NBTTagList("Items");
+        itemMap.entrySet().stream().sorted((e1, e2) -> Comparator.comparingInt(DoodadSlotRef::id).compare(e1.getValue().left(), e2.getValue().left())).forEach((entry) -> {
+            DoodadSlotRef slot = entry.getValue().left();
+            ItemStack stack = entry.getValue().right();
+
+        });
+        for (byte i = 0; i < items.length; i++) {
+            ItemStack stack = items[i];
+            if (stack == null) continue;
+            NBTTagCompound newTag = new NBTTagCompound();
+            newTag.setByte("Slot", i);
+            stack.writeToNBT(newTag);
+            list.appendTag(newTag);
+        }
+        tag.setTag("Items", list);
+        return tag;
+    }
+
 
     public static DoodadInventory loadFromNBT(NBTTagCompound tag, EntityPlayer player) {
         int invSize = Math.max(tag.getByte("InvSize"), DoodadsApi.getTotalSlots());
@@ -123,27 +170,4 @@ public class DoodadInventory implements IInventory {
         return new DoodadInventory(invSize, items, player);
     }
 
-    public void saveToNBT(NBTTagCompound tag) {
-        tag.setByte("InvSize", (byte) invSize);
-        NBTTagList list = new NBTTagList("Items");
-        for (byte i = 0; i < items.length; i++) {
-            ItemStack stack = items[i];
-            if (stack == null) continue;
-            NBTTagCompound newTag = new NBTTagCompound();
-            newTag.setByte("Slot", i);
-            stack.writeToNBT(newTag);
-            list.appendTag(newTag);
-        }
-        tag.setTag("Items", list);
-    }
-
-    public void tickInventory() {
-        for (int i = 0; i < items.length; i++) {
-            ItemStack stack = items[i];
-            Doodad doodad = getDoodad(stack);
-            if (doodad != null) {
-                doodad.onTick(stack, player, new DoodadSlotRef(i, TypeRegistry.INSTANCE.getLoadedTypes().get("ring")));
-            }
-        }
-    }
 }

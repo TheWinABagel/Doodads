@@ -37,6 +37,8 @@ public final class DoodadSlot extends Slot {
         return doodad != null && doodad.canUnequip(getStack(), player, slotRef);
     }
 
+
+
     public Doodad getDoodad() {
         if (getStack() != null && getStack().getItem() instanceof Doodad doodad) {
             return doodad;
